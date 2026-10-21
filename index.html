@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>食事ログ</title>
+<meta name="theme-color" content="#e98fab">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="食事ログ">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fff7f8;--card:#fff;--ink:#5c4650;--sub:#a08a92;--line:#f5d9e1;--acc:#e98fab;--acc2:#f9e1e8;--acc-ink:#fff;--mint:#cfe8de;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#2a2125;--card:#352a2f;--ink:#f6e8ed;--sub:#b9a2ab;--line:#4d3b43;--acc:#ec9db5;--acc2:#4a3640;--acc-ink:#2a1a20;--mint:#3d5149}}
+:root[data-theme="dark"]{--bg:#2a2125;--card:#352a2f;--ink:#f6e8ed;--sub:#b9a2ab;--line:#4d3b43;--acc:#ec9db5;--acc2:#4a3640;--acc-ink:#2a1a20;--mint:#3d5149}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Hiragino Sans",sans-serif;font-weight:500;line-height:1.6}
+main{max-width:520px;margin:0 auto;padding:12px 16px 40px}
+header{text-align:center;padding:10px 0 6px}
+header svg{display:block;margin:0 auto 2px}
+h1{font-size:30px;margin:0;color:var(--acc);letter-spacing:.06em}
+h2{font-size:17px;margin:0 0 8px;color:var(--acc)}
+.sub{color:var(--sub);font-size:13px;margin:2px 0 0}
+.card{background:var(--card);border:2px solid var(--line);border-radius:22px;padding:16px;margin-bottom:16px}
+label{display:block;font-size:13px;color:var(--sub);margin:12px 0 4px}
+input,textarea,button{font:inherit;color:inherit}
+input[type=date],input[type=time],input[type=text],textarea{width:100%;padding:11px;border:2px solid var(--line);border-radius:14px;background:var(--bg)}
+input[type=date],input[type=time]{display:block;min-width:0;max-width:100%;min-height:46px;-webkit-appearance:none;appearance:none;text-align:left}
+input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and-time-value{text-align:left;min-height:1.4em}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.pills{display:flex;gap:8px;flex-wrap:wrap}
+.pills button{flex:1;padding:9px 0;border-radius:999px;border:2px solid var(--line);background:var(--bg);font-weight:700}
+.pills button.on{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
+.btn{width:100%;padding:14px;border:0;border-radius:999px;background:var(--acc);color:var(--acc-ink);font-weight:700;margin-top:14px;font-size:16px}
+.pick{display:block;text-align:center;padding:14px;border:2px dashed var(--acc);border-radius:18px;cursor:pointer;color:var(--acc);font-weight:700}
+#prev{display:none;width:100%;border-radius:16px;margin-top:10px}
+.item{display:flex;gap:12px;align-items:center;padding:10px 0;border-top:2px solid var(--line)}
+.item:first-child{border-top:0}
+.item img{width:72px;height:72px;object-fit:cover;border-radius:16px;flex:none}
+.item b{display:block}.item span{color:var(--sub);font-size:14px}
+.acts{margin-left:auto;display:flex}.del,.ed{background:none;border:0;color:var(--sub);padding:8px}.ed{border:2px solid var(--acc);background:transparent;color:var(--acc);font-weight:700;border-radius:999px;padding:8px 18px;white-space:nowrap}.ed.todo{background:var(--acc);color:var(--acc-ink)}.link{background:none;border:0;color:var(--acc);text-decoration:underline;font-size:13px;padding:0 4px}.btn.sub{background:transparent;border:2px solid var(--line);color:var(--ink)}.sw{display:flex;gap:12px}.sw button{width:40px;height:40px;border-radius:50%;border:3px solid transparent;padding:0}.sw button.on{border-color:var(--ink)}.calhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}.cal .w{font-size:12px;color:var(--sub)}.cal button{aspect-ratio:1;border:2px solid transparent;border-radius:12px;background:var(--bg);font-size:14px;padding:0}.cal button.has{background:var(--acc);color:var(--acc-ink);font-weight:700}.cal button.sel{border-color:var(--ink)}.cal button.today{text-decoration:underline}.btn.warn{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
+#outImg img{width:100%;border-radius:16px;border:2px solid var(--line)}
+.note{font-size:13px;color:var(--sub);margin:8px 0 0}
+.hrow{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:var(--bg);border:2px solid var(--line);border-radius:16px;padding:8px 12px;margin-top:8px}
+.hrow.on{border-color:var(--acc);background:var(--acc2)}
+.hrow .th{display:flex;gap:4px}
+.hrow img{width:42px;height:42px;object-fit:cover;border-radius:10px}
+.hrow span{margin-left:auto;color:var(--sub);font-size:13px;white-space:nowrap}
+#formCard.editing{border-color:var(--acc);background:var(--acc2)}
+#dayTools summary{color:var(--acc);text-decoration:underline;font-size:13px;cursor:pointer;margin-top:14px;padding:6px 0}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <svg width="170" height="34" viewBox="0 0 170 34" aria-hidden="true">
+    <polygon points="20,6 28,10 28,20 20,24 12,20 12,10" fill="#f4c7d3"/><polygon points="52,16 58,19 58,26 52,29 46,26 46,19" fill="#cfe8de"/>
+    <polygon points="85,4 92,8 92,16 85,20 78,16 78,8" fill="#f6dfa0"/><polygon points="118,14 125,18 125,25 118,29 111,25 111,18" fill="#d9cdee"/>
+    <polygon points="150,6 157,10 157,18 150,22 143,18 143,10" fill="#c9def0"/>
+  </svg>
+  <h1>食事ログ</h1>
+  <p class="sub">毎日のごはんを1枚にまとめよう</p>
+  <p class="sub"><span id="hello"></span><button class="link" id="rename" hidden>名前・色を変更</button></p>
+</header>
+
+<section class="card" id="setup" hidden>
+  <h2>はじめに</h2>
+  <p class="note" style="margin:0 0 8px">お名前と好きな色を選んでください。まとめ画像にも使われます。あとから変更もできます。</p>
+  <input type="text" id="who" placeholder="例：まろん" maxlength="20">
+  <label>色</label>
+  <div class="sw" id="sw"></div>
+  <button class="btn" id="start">はじめる</button>
+</section>
+
+<section class="card">
+  <label for="date" style="margin-top:0">日付</label>
+  <input type="date" id="date">
+</section>
+
+<section class="card" id="formCard">
+  <h2 id="formTitle">食事を記録する</h2>
+  <label class="pick" for="photo" id="pickLabel">写真を撮る・選ぶ</label>
+  <input type="file" id="photo" accept="image/*" hidden>
+  <img id="prev" alt="選んだ写真">
+  <button type="button" class="btn sub" id="rot" hidden>写真を右に回転する</button>
+  <label>区分</label>
+  <div class="pills" id="kinds"><button data-k="朝">朝</button><button data-k="昼">昼</button><button data-k="間食">間食</button><button data-k="夜">夜</button></div>
+  <label for="time">時間</label><input type="time" id="time">
+  <label for="what">食べたもの（スペースか改行で区切る）</label>
+  <textarea id="what" rows="2" placeholder="ご飯 ウインナー 卵焼き サラダ"></textarea>
+  <button class="btn" id="add">この食事を追加</button>
+  <button class="btn sub" id="quick">写真だけ先に保存</button>
+  <button class="btn sub" id="cancel" hidden>やめる</button>
+  <button class="btn sub" id="delEntry" hidden>この食事を削除</button>
+</section>
+
+<section class="card">
+  <h2>この日の食事</h2>
+  <div id="list"></div>
+  <button class="btn" id="make">1枚にまとめる</button>
+  <p class="note" id="msg"></p>
+  <details id="dayTools" hidden>
+    <summary>日付の変更・この日の記録の削除</summary>
+    <label for="moveTo">この日の記録を別の日に移す</label>
+    <input type="date" id="moveTo">
+    <button class="btn sub" id="moveDay">日付を変更する</button>
+    <button class="btn sub" id="delDay">この日の記録をすべて削除</button>
+  </details>
+</section>
+
+<section class="card" id="out" hidden>
+  <div id="outImg"></div>
+  <button class="btn" id="saveImg">画像を保存</button>
+  <p class="note" id="msg2">保存したら、チャットワークでコーチとの個別チャットに添付して送ります。保存できないときは、画像を長押しして「写真に保存」してください。</p>
+</section>
+
+<section class="card">
+  <h2>カレンダー</h2>
+  <div class="calhead"><button class="link" id="prevM">‹ 前の月</button><b id="calT"></b><button class="link" id="nextM">次の月 ›</button></div>
+  <div class="cal" id="cal"></div>
+  <p class="note" id="streak"></p>
+  <h2 style="margin-top:18px">最近の記録（3日分）</h2>
+  <div id="hist"></div>
+</section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const KEY = 'mealLog.v1', WD = '日月火水木金土';
+let data = {}, photo = null, blobOut = null, kind = '朝', editId = null;
+let ready = false, busy = false, db = null, askedPersist = false;
+const STORE = 'days';
+function openDB() {
+  return new Promise((res, rej) => {
+    if (!window.indexedDB) { rej(new Error('no indexedDB')); return; }
+    const r = indexedDB.open('mealLog', 1);
+    r.onupgradeneeded = () => { r.result.createObjectStore(STORE); r.result.createObjectStore('meta'); };
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+    r.onblocked = () => rej(new Error('blocked'));
+  });
+}
+const idbReq = rq => new Promise((res, rej) => { rq.onsuccess = () => res(rq.result); rq.onerror = () => rej(rq.error); });
+const idbDone = tx => new Promise((res, rej) => { tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error); });
+const lsLoad = () => { try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { return {}; } };
+async function init() {
+  try {
+    db = await openDB();
+    const done = await idbReq(db.transaction('meta').objectStore('meta').get('migrated'));
+    if (!done) {
+      const old = lsLoad(), tx = db.transaction([STORE, 'meta'], 'readwrite'), st = tx.objectStore(STORE);
+      Object.keys(old).forEach(k => { if (Array.isArray(old[k]) && old[k].length) st.put(old[k], k); });
+      tx.objectStore('meta').put(Date.now(), 'migrated');
+      await idbDone(tx);
+    }
+    const st2 = db.transaction(STORE).objectStore(STORE);
+    const [keys, vals] = await Promise.all([idbReq(st2.getAllKeys()), idbReq(st2.getAll())]);
+    data = {}; keys.forEach((k, i) => { data[k] = vals[i]; });
+  } catch (e) { db = null; data = lsLoad(); }
+  ready = true; render();
+}
+async function save(changed) {
+  try {
+    if (db) {
+      const tx = db.transaction(STORE, 'readwrite'), st = tx.objectStore(STORE);
+      changed.forEach(k => { if ((data[k] || []).length) st.put(data[k], k); else st.delete(k); });
+      await idbDone(tx);
+    } else localStorage.setItem(KEY, JSON.stringify(data));
+    if (!askedPersist) { askedPersist = true; try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {} }
+    return true;
+  } catch (e) {
+    $('msg').textContent = '保存できませんでした。スマホの空き容量を確認するか、古い日の記録を削除してください。';
+    return false;
+  }
+}
+const pad = n => String(n).padStart(2, '0');
+const now = new Date();
+$('date').value = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
+$('time').value = pad(now.getHours()) + ':' + pad(now.getMinutes());
+const hr = now.getHours(); kind = hr < 10 ? '朝' : hr < 15 ? '昼' : hr < 17 ? '間食' : '夜';
+
+function mark() { document.querySelectorAll('#kinds button').forEach(b => b.classList.toggle('on', b.dataset.k === kind)); }
+document.querySelectorAll('#kinds button').forEach(b => b.onclick = () => { kind = b.dataset.k; mark(); });
+mark();
+let name = '', hue = 344, pick = 344;
+try { name = localStorage.getItem('mealLog.name') || ''; const hs = localStorage.getItem('mealLog.hue'); if (hs) hue = pick = Number(hs); } catch (e) {}
+const HUES = [['ピンク', 344], ['ミント', 160], ['ラベンダー', 265], ['ブルー', 205], ['オレンジ', 35]];
+const darkNow = () => (matchMedia('(prefers-color-scheme: dark)').matches && document.documentElement.dataset.theme !== 'light') || document.documentElement.dataset.theme === 'dark';
+function applyTheme(h) {
+  const s = document.documentElement.style, dk = darkNow();
+  s.setProperty('--acc', dk ? 'hsl(' + h + ' 70% 76%)' : 'hsl(' + h + ' 65% 70%)');
+  s.setProperty('--acc2', dk ? 'hsl(' + h + ' 22% 22%)' : 'hsl(' + h + ' 70% 93%)');
+  s.setProperty('--line', dk ? 'hsl(' + h + ' 16% 27%)' : 'hsl(' + h + ' 60% 91%)');
+  s.setProperty('--bg', dk ? 'hsl(' + h + ' 14% 15%)' : 'hsl(' + h + ' 100% 98%)');
+}
+function markSw() { document.querySelectorAll('#sw button').forEach(b => b.classList.toggle('on', Number(b.dataset.h) === pick)); }
+HUES.forEach(([n, h]) => {
+  const b = document.createElement('button'); b.type = 'button'; b.dataset.h = h; b.title = n; b.setAttribute('aria-label', n);
+  b.style.background = 'hsl(' + h + ' 65% 72%)';
+  b.onclick = () => { pick = h; applyTheme(h); markSw(); };
+  $('sw').appendChild(b);
+});
+applyTheme(hue); markSw();
+function applyName() {
+  const has = !!name;
+  $('setup').hidden = has; $('rename').hidden = !has;
+  $('hello').textContent = has ? name + 'さん' : '';
+  document.querySelectorAll('main > section:not(#setup)').forEach(s => s.style.display = has ? '' : 'none');
+}
+$('start').onclick = () => {
+  const v = $('who').value.trim(); if (!v) return;
+  name = v; hue = pick;
+  try { localStorage.setItem('mealLog.name', name); localStorage.setItem('mealLog.hue', String(hue)); } catch (e) {}
+  applyName();
+};
+$('rename').onclick = () => { $('who').value = name; pick = hue; markSw(); $('start').textContent = '変更する'; $('setup').hidden = false; $('who').focus(); };
+applyName();
+
+let armed = false;
+function armDel(on) {
+  armed = on; const b = $('delEntry');
+  b.textContent = on ? 'もう一度押すと削除します' : 'この食事を削除'; b.classList.toggle('warn', on);
+}
+$('delEntry').onclick = async () => {
+  if (!editId) return;
+  if (!armed) { armDel(true); return; }
+  const d = $('date').value;
+  const before = JSON.stringify(data[d] || []);
+  data[d] = (data[d] || []).filter(x => x.id !== editId);
+  if (!(await save([d]))) { data[d] = JSON.parse(before); return; }
+  resetForm(); $('out').hidden = true; render();
+};
+function setNow() {
+  const n = new Date(), h = n.getHours();
+  $('time').value = pad(h) + ':' + pad(n.getMinutes());
+  kind = h < 10 ? '朝' : h < 15 ? '昼' : h < 17 ? '間食' : '夜'; mark();
+}
+function resetForm() {
+  editId = null; $('msg').textContent = ''; $('formTitle').textContent = '食事を記録する'; $('formCard').classList.remove('editing'); $('rot').hidden = true; $('quick').hidden = false; $('delEntry').hidden = true; armDel(false); photo = null; $('prev').style.display = 'none'; $('photo').value = '';
+  $('pickLabel').textContent = '写真を撮る・選ぶ'; $('what').value = '';
+  $('add').textContent = 'この食事を追加'; $('cancel').hidden = true;
+  setNow();
+}
+$('cancel').onclick = resetForm;
+function startEdit(e) {
+  editId = e.id; $('formTitle').textContent = '修正中：' + e.kind + ' ' + jpTime(e.time); $('formCard').classList.add('editing'); $('rot').hidden = false; $('quick').hidden = true; $('delEntry').hidden = false; armDel(false); photo = e.img; kind = e.kind; mark();
+  $('prev').src = photo; $('prev').style.display = 'block'; $('pickLabel').textContent = '写真を変更する';
+  $('time').value = e.time; $('what').value = e.what;
+  $('add').textContent = '変更を保存'; $('cancel').hidden = false;
+  $('formCard').scrollIntoView({ behavior: 'smooth' });
+}
+
+function jpTime(t) { const [h, m] = t.split(':').map(Number); return m === 0 ? h + '時' : m === 30 ? h + '時半' : h + '時' + m + '分'; }
+function jpDate(d) { const [y, m, dd] = d.split('-').map(Number); return m + '月' + dd + '日（' + WD[new Date(y, m - 1, dd).getDay()] + '）'; }
+function entriesOf(d) { return (data[d] || []).slice().sort((a, b) => a.time.localeCompare(b.time)); }
+
+function render() {
+  const d = $('date').value, list = entriesOf(d);
+  $('list').innerHTML = list.length ? '' : '<p class="note">この日はまだ記録がありません。</p>';
+  $('dayTools').hidden = !list.length; $('dayTools').open = false; $('moveTo').value = d; armDay(false);
+  list.forEach(e => {
+    const el = document.createElement('div'); el.className = 'item';
+    el.innerHTML = '<img alt=""><div><b></b><span></span></div><div class="acts"><button class="ed">修正</button></div>';
+    el.querySelector('img').src = e.img;
+    el.querySelector('b').textContent = e.kind + ' ' + jpTime(e.time);
+    el.querySelector('span').textContent = e.what || '食べたものを入力してください';
+    if (!e.what) el.querySelector('span').style.color = 'var(--acc)';
+    el.querySelector('.ed').textContent = e.what ? '修正' : '入力';
+    el.querySelector('.ed').classList.toggle('todo', !e.what);
+    el.querySelector('.ed').onclick = () => startEdit(e);
+    $('list').appendChild(el);
+  });
+  const days = Object.keys(data).filter(k => data[k].length).sort().reverse().slice(0, 3);
+  $('hist').innerHTML = days.length ? '' : '<p class="note">記録するとここに日ごとに並びます。</p>';
+  days.forEach(k => {
+    const b = document.createElement('button'); b.className = 'hrow' + (k === d ? ' on' : '');
+    const th = document.createElement('div'); th.className = 'th';
+    entriesOf(k).slice(0, 3).forEach(e => { const i = document.createElement('img'); i.alt = ''; i.src = e.img; th.appendChild(i); });
+    const t = document.createElement('b'); t.textContent = jpDate(k);
+    const n = document.createElement('span'); n.textContent = data[k].length + '食';
+    b.append(th, t, n);
+    b.onclick = () => { $('date').value = k; $('out').hidden = true; resetForm(); render(); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+    $('hist').appendChild(b);
+  });
+  renderCal();
+}
+
+let cal = { y: now.getFullYear(), m: now.getMonth() };
+const ymd = (y, m, d) => y + '-' + pad(m + 1) + '-' + pad(d);
+function renderCal() {
+  const sel = $('date').value, first = new Date(cal.y, cal.m, 1), last = new Date(cal.y, cal.m + 1, 0).getDate();
+  $('calT').textContent = cal.y + '年' + (cal.m + 1) + '月';
+  const el = $('cal'); el.innerHTML = '';
+  [...WD].forEach(w => { const s = document.createElement('div'); s.className = 'w'; s.textContent = w; el.appendChild(s); });
+  for (let i = 0; i < first.getDay(); i++) el.appendChild(document.createElement('div'));
+  const today = ymd(now.getFullYear(), now.getMonth(), now.getDate());
+  for (let d = 1; d <= last; d++) {
+    const k = ymd(cal.y, cal.m, d), b = document.createElement('button');
+    b.type = 'button'; b.textContent = d;
+    if ((data[k] || []).length) b.classList.add('has');
+    if (k === sel) b.classList.add('sel');
+    if (k === today) b.classList.add('today');
+    b.onclick = () => { $('date').value = k; $('out').hidden = true; resetForm(); render(); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+    el.appendChild(b);
+  }
+  const t = new Date(now.getFullYear(), now.getMonth(), now.getDate()), has = x => (data[ymd(x.getFullYear(), x.getMonth(), x.getDate())] || []).length;
+  if (!has(t)) t.setDate(t.getDate() - 1);
+  let n = 0; while (has(t)) { n++; t.setDate(t.getDate() - 1); }
+  $('streak').textContent = n ? n + '日連続で記録しています。' : 'まだ連続の記録はありません。今日の分を記録しましょう。';
+}
+$('prevM').onclick = () => { cal.m--; if (cal.m < 0) { cal.m = 11; cal.y--; } renderCal(); };
+$('nextM').onclick = () => { cal.m++; if (cal.m > 11) { cal.m = 0; cal.y++; } renderCal(); };
+$('date').onchange = () => { $('out').hidden = true; resetForm(); render(); };
+
+function shrink(file) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file), im = new Image();
+    im.onload = () => {
+      const w = 640, h = Math.round(im.height * w / im.width);
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      c.getContext('2d').drawImage(im, 0, 0, w, h);
+      URL.revokeObjectURL(url); res(c.toDataURL('image/jpeg', 0.72));
+    };
+    im.onerror = rej; im.src = url;
+  });
+}
+$('photo').onchange = async ev => {
+  const f = ev.target.files[0]; if (!f) return;
+  if (!editId) setNow();
+  try { photo = await shrink(f); $('rot').hidden = false; $('prev').src = photo; $('prev').style.display = 'block'; $('pickLabel').textContent = '写真を変更する'; }
+  catch (e) { $('msg').textContent = '写真を読み込めませんでした。'; }
+};
+function rotate(src) {
+  return new Promise((res, rej) => {
+    const im = new Image();
+    im.onload = () => {
+      const c = document.createElement('canvas'); c.width = im.height; c.height = im.width;
+      const g = c.getContext('2d'); g.translate(c.width, 0); g.rotate(Math.PI / 2); g.drawImage(im, 0, 0);
+      res(c.toDataURL('image/jpeg', 0.72));
+    };
+    im.onerror = rej; im.src = src;
+  });
+}
+$('rot').onclick = async () => {
+  if (!photo) return;
+  try { photo = await rotate(photo); $('prev').src = photo; } catch (e) { $('msg').textContent = '回転できませんでした。'; }
+};
+let dayArmed = false;
+function armDay(on) {
+  dayArmed = on; const b = $('delDay');
+  b.textContent = on ? 'もう一度押すと、この日の記録をすべて削除します' : 'この日の記録をすべて削除';
+  b.classList.toggle('warn', on);
+}
+$('delDay').onclick = async () => {
+  const d = $('date').value;
+  if (!(data[d] || []).length) return;
+  if (!dayArmed) { armDay(true); return; }
+  const before = JSON.stringify(data[d]);
+  delete data[d];
+  if (!(await save([d]))) { data[d] = JSON.parse(before); return; }
+  resetForm(); $('out').hidden = true;
+  $('msg').textContent = jpDate(d) + 'の記録をすべて削除しました。';
+  render();
+};
+$('moveDay').onclick = async () => {
+  const from = $('date').value, to = $('moveTo').value, items = data[from] || [];
+  if (!items.length) return;
+  if (!to) { $('msg').textContent = '移す先の日付を選んでください。'; return; }
+  if (to === from) { $('msg').textContent = '今と同じ日付です。移す先の日付を変えてください。'; return; }
+  const bFrom = JSON.stringify(items), bTo = data[to] ? JSON.stringify(data[to]) : null;
+  data[to] = (data[to] || []).concat(items); delete data[from];
+  if (!(await save([from, to]))) { data[from] = JSON.parse(bFrom); if (bTo === null) delete data[to]; else data[to] = JSON.parse(bTo); return; }
+  $('date').value = to; resetForm(); $('out').hidden = true;
+  const [y, m] = to.split('-').map(Number); cal.y = y; cal.m = m - 1;
+  render();
+  $('msg').textContent = jpDate(from) + 'の記録を' + jpDate(to) + 'に移しました。' + (bTo !== null ? '（移し先にあった記録と合わせました）' : '');
+};
+async function commit(needText) {
+  if (busy) return;
+  if (!ready) { $('msg').textContent = '読み込み中です。少し待ってからもう一度押してください。'; return; }
+  busy = true;
+  try { await commitInner(needText); } finally { busy = false; }
+}
+async function commitInner(needText) {
+  if (!photo) { $('msg').textContent = '先に写真を選んでください。'; return; }
+  if (needText && !$('what').value.trim()) { $('msg').textContent = '食べたものを入れてください。あとで入れるなら「写真だけ先に保存」を押してください。'; return; }
+  const d = $('date').value;
+  const rec = { id: editId || Date.now(), kind, time: $('time').value, what: $('what').value.trim(), img: photo };
+  const before = JSON.stringify(data[d] || []);
+  if (editId) data[d] = (data[d] || []).map(x => x.id === editId ? rec : x); else (data[d] = data[d] || []).push(rec);
+  if (!(await save([d]))) { data[d] = JSON.parse(before); return; }
+  const wasEdit = !!editId, hadText = !!rec.what; resetForm(); $('out').hidden = true;
+  render();
+  $('msg').textContent = wasEdit ? '変更を保存しました。' : hadText ? '追加しました。' : '写真を保存しました。あとで「入力」を押すと、食べたものを書き込めます。';
+  $('list').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+$('add').onclick = () => commit(!editId);
+$('quick').onclick = () => commit(false);
+
+const loadImg = src => new Promise(r => { const i = new Image(); i.onload = () => r(i); i.src = src; });
+function rr(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+function hex(g, x, y, r, col, rot) { g.beginPath(); for (let i = 0; i < 6; i++) { const a = rot + i * Math.PI / 3; g.lineTo(x + r * Math.cos(a), y + r * Math.sin(a)); } g.closePath(); g.fillStyle = col; g.fill(); }
+function wrap(g, text, maxW) {
+  const out = []; let cur = '';
+  text.split(/[\s、,，]+/).filter(Boolean).forEach(w => { const t = cur ? cur + ' ' + w : w; if (cur && g.measureText(t).width > maxW) { out.push(cur); cur = w; } else cur = t; });
+  if (cur) out.push(cur); return out;
+}
+
+$('make').onclick = async () => {
+  const d = $('date').value, list = entriesOf(d);
+  if (!list.length) { $('msg').textContent = 'この日の記録がありません。'; return; }
+  $('msg').textContent = list.some(e => !e.what) ? '食べたものが未入力の食事があります。画像は作りましたが、先に入力すると見やすくなります。' : '';
+  const FF = '"Zen Maru Gothic","Hiragino Maru Gothic ProN","Hiragino Sans",sans-serif';
+  try { await document.fonts.load('700 40px "Zen Maru Gothic"', jpDate(d) + list.map(e => e.kind + e.what + jpTime(e.time)).join('') + '食事の記録さんの0123456789' + name); } catch (e) {}
+  const W = 1080, P = 40, GAP = 24, HEAD = 210, BAR = 64, CW = W - 2 * P, PAD = 20, FW = 420, FH = 315, TX = PAD + FW + 36, TW = CW - TX - 24, LH = 46;
+  const ims = await Promise.all(list.map(e => loadImg(e.img)));
+  const mg = document.createElement('canvas').getContext('2d'); mg.font = '700 34px ' + FF;
+  const lines = list.map(e => e.what ? wrap(mg, e.what, TW) : []);
+  const rowH = list.map((e, i) => BAR + 10 + PAD + Math.max(FH, lines[i].length * LH) + PAD);
+  
+  
+  const H = HEAD + rowH.reduce((a, b) => a + b, 0) + GAP * (list.length - 1) + P;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  g.fillStyle = 'hsl(' + hue + ' 100% 98%)'; g.fillRect(0, 0, W, H);
+  const cols = ['#f4c7d3', '#cfe8de', '#f6dfa0', '#d9cdee', '#c9def0'];
+  g.globalAlpha = 0.85;
+  for (let i = 0; i < 18; i++) hex(g, 60 + i * (W - 120) / 17, 38 + (i % 3) * 22 + Math.sin(i * 1.7) * 12, 12 + (i % 4) * 4, cols[i % 5], i);
+  g.globalAlpha = 1;
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillStyle = 'hsl(' + hue + ' 68% 70%)'; g.font = '700 74px ' + FF; g.fillText(jpDate(d), W / 2, 124, W - 2 * P);
+  g.fillStyle = 'hsl(' + hue + ' 70% 80%)'; g.font = '700 30px ' + FF; g.fillText((name ? name + 'さんの' : '') + '食事の記録', W / 2, 184, W - 2 * P);
+  let ry = HEAD;
+  const rowY = rowH.map(h => { const y = ry; ry += h + GAP; return y; });
+  for (let i = 0; i < list.length; i++) {
+    const e = list[i], im = ims[i], h = rowH[i], y = rowY[i], x = P;
+    
+    
+    rr(g, x, y + BAR + 10, CW, h - BAR - 10, 28); g.fillStyle = '#fff'; g.fill(); g.lineWidth = 4; g.strokeStyle = 'hsl(' + hue + ' 60% 88%)'; g.stroke();
+    rr(g, x, y, CW, BAR, BAR / 2); g.fillStyle = 'hsl(' + hue + ' 65% 72%)'; g.fill();
+    g.textAlign = 'left'; g.fillStyle = '#fff'; g.font = '700 34px ' + FF;
+    g.fillText(e.kind + '　' + jpTime(e.time), x + 28, y + BAR / 2 + 2, CW - 56);
+    const ch = h - BAR - 10 - 2 * PAD, fx = x + PAD, fy = y + BAR + 10 + PAD + Math.round((ch - FH) / 2);
+    g.save(); rr(g, fx, fy, FW, FH, 18); g.clip();
+    g.fillStyle = 'hsl(' + hue + ' 70% 95%)'; g.fillRect(fx, fy, FW, FH);
+    const s = Math.max(FW / im.width, FH / im.height), dw = im.width * s, dh = im.height * s;
+    g.drawImage(im, fx + (FW - dw) / 2, fy + (FH - dh) / 2, dw, dh); g.restore();
+    g.fillStyle = 'hsl(' + hue + ' 20% 36%)'; g.font = '700 34px ' + FF; g.textAlign = 'left';
+    const ty = y + BAR + 10 + PAD + Math.round((ch - lines[i].length * LH) / 2); lines[i].forEach((t, k) => g.fillText(t, x + TX, ty + k * LH + LH / 2, TW));
+  }
+  $('outImg').innerHTML = '';
+  const img = new Image(); img.alt = '1日のまとめ画像'; img.src = c.toDataURL('image/jpeg', 0.85);
+  $('outImg').appendChild(img);
+  await new Promise(r => c.toBlob(b => { blobOut = b; r(); }, 'image/jpeg', 0.85));
+  $('out').hidden = false; $('out').scrollIntoView();
+};
+$('saveImg').onclick = async () => {
+  const fallback = '保存できませんでした。画像を長押しして「写真に保存」してください。';
+  if (!blobOut) { $('msg2').textContent = '画像の準備中です。もう一度押してください。'; return; }
+  const filename = 'meal-' + $('date').value + '.jpg';
+  try {
+    const file = new File([blobOut], filename, { type: 'image/jpeg' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file] });
+        $('msg2').textContent = '共有メニューから保存・送信できます。';
+        return;
+      } catch (e) {
+        if (e && e.name === 'AbortError') return;
+      }
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blobOut); a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    $('msg2').textContent = '保存しました。チャットワークで送ってください。';
+  } catch (e) { $('msg2').textContent = fallback; }
+};
+init();
+if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+</script>
+</body>
+</html>
