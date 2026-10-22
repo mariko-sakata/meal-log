@@ -1,5 +1,5 @@
 // 食事ログ オフライン用 Service Worker
-const CACHE = 'meal-log-v1';
+const CACHE = 'meal-log-v3';
 const CORE = ['index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 
 self.addEventListener('install', e => {

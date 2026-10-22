@@ -39,7 +39,11 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
 .pills button.on{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
 .btn{width:100%;padding:14px;border:0;border-radius:999px;background:var(--acc);color:var(--acc-ink);font-weight:700;margin-top:14px;font-size:16px}
 .pick{display:block;text-align:center;padding:14px;border:2px dashed var(--acc);border-radius:18px;cursor:pointer;color:var(--acc);font-weight:700}
-#prev{display:none;width:100%;border-radius:16px;margin-top:10px}
+#prev{display:none;position:sticky;top:8px;z-index:5;width:46%;aspect-ratio:4/3;object-fit:cover;border-radius:14px;margin:10px auto 0;border:3px solid var(--card);box-shadow:0 2px 10px rgba(0,0,0,.2);cursor:zoom-in}
+#prev.big{width:100%;aspect-ratio:auto;max-height:70vh;object-fit:contain;background:var(--card);cursor:zoom-out}
+#chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.chip{border:2px solid var(--line);background:var(--bg);border-radius:999px;padding:5px 13px;font-size:14px}
+#fmtPrev{margin:6px 0 0;color:var(--acc);font-size:13px;font-weight:700;min-height:1.2em}
 .item{display:flex;gap:12px;align-items:center;padding:10px 0;border-top:2px solid var(--line)}
 .item:first-child{border-top:0}
 .item img{width:72px;height:72px;object-fit:cover;border-radius:16px;flex:none}
@@ -93,7 +97,10 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
   <div class="pills" id="kinds"><button data-k="朝">朝</button><button data-k="昼">昼</button><button data-k="間食">間食</button><button data-k="夜">夜</button></div>
   <label for="time">時間</label><input type="time" id="time">
   <label for="what">食べたもの（スペースか改行で区切る）</label>
-  <textarea id="what" rows="2" placeholder="ご飯 ウインナー 卵焼き サラダ"></textarea>
+  <textarea id="what" rows="3" placeholder="ご飯 ウインナー 卵焼き サラダ"></textarea>
+  <p id="fmtPrev"></p>
+  <label id="chipsLabel" hidden>よく食べるもの（タップで追加）</label>
+  <div id="chips"></div>
   <button class="btn" id="add">この食事を追加</button>
   <button class="btn sub" id="quick">写真だけ先に保存</button>
   <button class="btn sub" id="cancel" hidden>やめる</button>
@@ -163,7 +170,13 @@ async function init() {
     const [keys, vals] = await Promise.all([idbReq(st2.getAllKeys()), idbReq(st2.getAll())]);
     data = {}; keys.forEach((k, i) => { data[k] = vals[i]; });
   } catch (e) { db = null; data = lsLoad(); }
-  ready = true; render();
+  try {
+    let f = null;
+    if (db) f = await idbReq(db.transaction('meta').objectStore('meta').get('freq'));
+    else { try { f = JSON.parse(localStorage.getItem('mealLog.freq') || 'null'); } catch (e) {} }
+    if (f) freq = f; else { freq = buildFreq(); saveFreq(); }
+  } catch (e) { freq = buildFreq(); }
+  ready = true; render(); updatePreview();
 }
 async function save(changed) {
   try {
@@ -241,9 +254,45 @@ function setNow() {
   $('time').value = pad(h) + ':' + pad(n.getMinutes());
   kind = h < 10 ? '朝' : h < 15 ? '昼' : h < 17 ? '間食' : '夜'; mark();
 }
+const SEPRE = /[\s、,，／\/・]+/;
+const items = t => (t || '').split(SEPRE).filter(Boolean);
+const fmt = t => items(t).join('・');
+let freq = {};
+function buildFreq() {
+  const f = {};
+  Object.values(data).forEach(l => (l || []).forEach(e => items(e.what).forEach(it => { const x = f[it] || { n: 0, t: 0 }; x.n++; x.t = Math.max(x.t, e.id || 0); f[it] = x; })));
+  return f;
+}
+async function saveFreq() {
+  try {
+    if (db) { const tx = db.transaction('meta', 'readwrite'); tx.objectStore('meta').put(freq, 'freq'); await idbDone(tx); }
+    else localStorage.setItem('mealLog.freq', JSON.stringify(freq));
+  } catch (e) {}
+}
+function bumpFreq(now, prev) {
+  const had = new Set(items(prev));
+  items(now).forEach(it => { if (had.has(it)) return; const x = freq[it] || { n: 0, t: 0 }; x.n++; x.t = Date.now(); freq[it] = x; });
+  const ks = Object.keys(freq);
+  if (ks.length > 300) ks.sort((a, b) => freq[a].n - freq[b].n || freq[a].t - freq[b].t).slice(0, ks.length - 300).forEach(k => delete freq[k]);
+}
+function updatePreview() {
+  const f = fmt($('what').value); $('fmtPrev').textContent = f ? '表示：' + f : '';
+  const typed = new Set(items($('what').value));
+  const top = Object.keys(freq).filter(k => !typed.has(k)).sort((a, b) => freq[b].n - freq[a].n || freq[b].t - freq[a].t).slice(0, 10);
+  $('chips').innerHTML = ''; $('chipsLabel').hidden = !top.length;
+  top.forEach(k => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = k; $('chips').appendChild(b); });
+}
+$('what').oninput = updatePreview;
+$('chips').onclick = e => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  const t = $('what'), cur = t.value;
+  t.value = cur && !SEPRE.test(cur.slice(-1)) ? cur + ' ' + b.textContent : cur + b.textContent;
+  updatePreview();
+};
+$('prev').onclick = () => $('prev').classList.toggle('big');
 function resetForm() {
   editId = null; $('msg').textContent = ''; $('formTitle').textContent = '食事を記録する'; $('formCard').classList.remove('editing'); $('rot').hidden = true; $('quick').hidden = false; $('delEntry').hidden = true; armDel(false); photo = null; $('prev').style.display = 'none'; $('photo').value = '';
-  $('pickLabel').textContent = '写真を撮る・選ぶ'; $('what').value = '';
+  $('pickLabel').textContent = '写真を撮る・選ぶ'; $('what').value = ''; $('prev').classList.remove('big'); updatePreview();
   $('add').textContent = 'この食事を追加'; $('cancel').hidden = true;
   setNow();
 }
@@ -251,7 +300,7 @@ $('cancel').onclick = resetForm;
 function startEdit(e) {
   editId = e.id; $('formTitle').textContent = '修正中：' + e.kind + ' ' + jpTime(e.time); $('formCard').classList.add('editing'); $('rot').hidden = false; $('quick').hidden = true; $('delEntry').hidden = false; armDel(false); photo = e.img; kind = e.kind; mark();
   $('prev').src = photo; $('prev').style.display = 'block'; $('pickLabel').textContent = '写真を変更する';
-  $('time').value = e.time; $('what').value = e.what;
+  $('time').value = e.time; $('what').value = e.what; $('prev').classList.remove('big'); updatePreview();
   $('add').textContent = '変更を保存'; $('cancel').hidden = false;
   $('formCard').scrollIntoView({ behavior: 'smooth' });
 }
@@ -269,7 +318,7 @@ function render() {
     el.innerHTML = '<img alt=""><div><b></b><span></span></div><div class="acts"><button class="ed">修正</button></div>';
     el.querySelector('img').src = e.img;
     el.querySelector('b').textContent = e.kind + ' ' + jpTime(e.time);
-    el.querySelector('span').textContent = e.what || '食べたものを入力してください';
+    el.querySelector('span').textContent = fmt(e.what) || '食べたものを入力してください';
     if (!e.what) el.querySelector('span').style.color = 'var(--acc)';
     el.querySelector('.ed').textContent = e.what ? '修正' : '入力';
     el.querySelector('.ed').classList.toggle('todo', !e.what);
@@ -393,9 +442,10 @@ async function commitInner(needText) {
   const d = $('date').value;
   const rec = { id: editId || Date.now(), kind, time: $('time').value, what: $('what').value.trim(), img: photo };
   const before = JSON.stringify(data[d] || []);
+  const prevWhat = editId ? ((data[d] || []).find(x => x.id === editId) || {}).what : '';
   if (editId) data[d] = (data[d] || []).map(x => x.id === editId ? rec : x); else (data[d] = data[d] || []).push(rec);
   if (!(await save([d]))) { data[d] = JSON.parse(before); return; }
-  const wasEdit = !!editId, hadText = !!rec.what; resetForm(); $('out').hidden = true;
+  const wasEdit = !!editId, hadText = !!rec.what; bumpFreq(rec.what, prevWhat); saveFreq(); resetForm(); $('out').hidden = true;
   render();
   $('msg').textContent = wasEdit ? '変更を保存しました。' : hadText ? '追加しました。' : '写真を保存しました。あとで「入力」を押すと、食べたものを書き込めます。';
   $('list').scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -407,8 +457,16 @@ const loadImg = src => new Promise(r => { const i = new Image(); i.onload = () =
 function rr(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
 function hex(g, x, y, r, col, rot) { g.beginPath(); for (let i = 0; i < 6; i++) { const a = rot + i * Math.PI / 3; g.lineTo(x + r * Math.cos(a), y + r * Math.sin(a)); } g.closePath(); g.fillStyle = col; g.fill(); }
 function wrap(g, text, maxW) {
-  const out = []; let cur = '';
-  text.split(/[\s、,，]+/).filter(Boolean).forEach(w => { const t = cur ? cur + ' ' + w : w; if (cur && g.measureText(t).width > maxW) { out.push(cur); cur = w; } else cur = t; });
+  const its = items(text), out = [], w = s => g.measureText(s).width; let cur = '';
+  its.forEach((it, i) => {
+    let piece = it + (i < its.length - 1 ? '・' : '');
+    if (cur && w(cur + piece) > maxW) { out.push(cur); cur = ''; }
+    while (piece.length > 1 && w(cur + piece) > maxW) {
+      let k = 1; while (k < piece.length && w(cur + piece.slice(0, k + 1)) <= maxW) k++;
+      out.push(cur + piece.slice(0, k)); piece = piece.slice(k); cur = '';
+    }
+    cur += piece;
+  });
   if (cur) out.push(cur); return out;
 }
 
@@ -417,7 +475,7 @@ $('make').onclick = async () => {
   if (!list.length) { $('msg').textContent = 'この日の記録がありません。'; return; }
   $('msg').textContent = list.some(e => !e.what) ? '食べたものが未入力の食事があります。画像は作りましたが、先に入力すると見やすくなります。' : '';
   const FF = '"Zen Maru Gothic","Hiragino Maru Gothic ProN","Hiragino Sans",sans-serif';
-  try { await document.fonts.load('700 40px "Zen Maru Gothic"', jpDate(d) + list.map(e => e.kind + e.what + jpTime(e.time)).join('') + '食事の記録さんの0123456789' + name); } catch (e) {}
+  try { await document.fonts.load('700 40px "Zen Maru Gothic"', jpDate(d) + list.map(e => e.kind + e.what + jpTime(e.time)).join('') + '食事の記録さんの0123456789・' + name); } catch (e) {}
   const W = 1080, P = 40, GAP = 24, HEAD = 210, BAR = 64, CW = W - 2 * P, PAD = 20, FW = 420, FH = 315, TX = PAD + FW + 36, TW = CW - TX - 24, LH = 46;
   const ims = await Promise.all(list.map(e => loadImg(e.img)));
   const mg = document.createElement('canvas').getContext('2d'); mg.font = '700 34px ' + FF;
