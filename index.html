@@ -47,6 +47,7 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
 .item{display:flex;gap:12px;align-items:center;padding:10px 0;border-top:2px solid var(--line)}
 .item:first-child{border-top:0}
 .item img{width:72px;height:72px;object-fit:cover;border-radius:16px;flex:none}
+.item .noimg{width:72px;height:72px;border-radius:16px;flex:none;display:flex;align-items:center;justify-content:center;border:2px dashed var(--line);color:var(--sub);font-size:12px;text-align:center}
 .item b{display:block}.item span{color:var(--sub);font-size:14px}
 .acts{margin-left:auto;display:flex}.del,.ed{background:none;border:0;color:var(--sub);padding:8px}.ed{border:2px solid var(--acc);background:transparent;color:var(--acc);font-weight:700;border-radius:999px;padding:8px 18px;white-space:nowrap}.ed.todo{background:var(--acc);color:var(--acc-ink)}.link{background:none;border:0;color:var(--acc);text-decoration:underline;font-size:13px;padding:0 4px}.btn.sub{background:transparent;border:2px solid var(--line);color:var(--ink)}.sw{display:flex;gap:12px}.sw button{width:40px;height:40px;border-radius:50%;border:3px solid transparent;padding:0}.sw button.on{border-color:var(--ink)}.calhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}.cal .w{font-size:12px;color:var(--sub)}.cal button{aspect-ratio:1;border:2px solid transparent;border-radius:12px;background:var(--bg);font-size:14px;padding:0}.cal button.has{background:var(--acc);color:var(--acc-ink);font-weight:700}.cal button.sel{border-color:var(--ink)}.cal button.today{text-decoration:underline}.btn.warn{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
 #outImg img{width:100%;border-radius:16px;border:2px solid var(--line)}
@@ -92,7 +93,9 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
   <label class="pick" for="photo" id="pickLabel">写真を撮る・選ぶ</label>
   <input type="file" id="photo" accept="image/*" hidden>
   <img id="prev" alt="選んだ写真">
-  <button type="button" class="btn sub" id="rot" hidden>写真を右に回転する</button>
+  <button type="button" class="btn sub" id="rot" hidden>写真を左に回転する</button>
+  <button type="button" class="btn sub" id="rmPhoto" hidden>写真を外す</button>
+  <p class="note" id="nophoto">写真がなくても大丈夫です。食べたものだけで保存できます。</p>
   <label>区分</label>
   <div class="pills" id="kinds"><button data-k="朝">朝</button><button data-k="昼">昼</button><button data-k="間食">間食</button><button data-k="夜">夜</button></div>
   <label for="time">時間</label><input type="time" id="time">
@@ -290,17 +293,25 @@ $('chips').onclick = e => {
   updatePreview();
 };
 $('prev').onclick = () => $('prev').classList.toggle('big');
+function syncPhotoUI() {
+  const has = !!photo;
+  $('prev').style.display = has ? 'block' : 'none';
+  if (has) $('prev').src = photo; else $('prev').removeAttribute('src');
+  $('prev').classList.remove('big');
+  $('rot').hidden = !has; $('rmPhoto').hidden = !has; $('nophoto').hidden = has;
+  $('pickLabel').textContent = has ? '写真を変更する' : '写真を撮る・選ぶ';
+}
+$('rmPhoto').onclick = () => { photo = null; $('photo').value = ''; syncPhotoUI(); };
 function resetForm() {
   editId = null; $('msg').textContent = ''; $('formTitle').textContent = '食事を記録する'; $('formCard').classList.remove('editing'); $('rot').hidden = true; $('quick').hidden = false; $('delEntry').hidden = true; armDel(false); photo = null; $('prev').style.display = 'none'; $('photo').value = '';
-  $('pickLabel').textContent = '写真を撮る・選ぶ'; $('what').value = ''; $('prev').classList.remove('big'); updatePreview();
+  $('what').value = ''; syncPhotoUI(); updatePreview();
   $('add').textContent = 'この食事を追加'; $('cancel').hidden = true;
   setNow();
 }
 $('cancel').onclick = resetForm;
 function startEdit(e) {
-  editId = e.id; $('formTitle').textContent = '修正中：' + e.kind + ' ' + jpTime(e.time); $('formCard').classList.add('editing'); $('rot').hidden = false; $('quick').hidden = true; $('delEntry').hidden = false; armDel(false); photo = e.img; kind = e.kind; mark();
-  $('prev').src = photo; $('prev').style.display = 'block'; $('pickLabel').textContent = '写真を変更する';
-  $('time').value = e.time; $('what').value = e.what; $('prev').classList.remove('big'); updatePreview();
+  editId = e.id; $('formTitle').textContent = '修正中：' + e.kind + ' ' + jpTime(e.time); $('formCard').classList.add('editing'); $('quick').hidden = true; $('delEntry').hidden = false; armDel(false); photo = e.img; kind = e.kind; mark();
+  $('time').value = e.time; $('what').value = e.what; syncPhotoUI(); updatePreview();
   $('add').textContent = '変更を保存'; $('cancel').hidden = false;
   $('formCard').scrollIntoView({ behavior: 'smooth' });
 }
@@ -316,7 +327,7 @@ function render() {
   list.forEach(e => {
     const el = document.createElement('div'); el.className = 'item';
     el.innerHTML = '<img alt=""><div><b></b><span></span></div><div class="acts"><button class="ed">修正</button></div>';
-    el.querySelector('img').src = e.img;
+    if (e.img) el.querySelector('img').src = e.img; else { const n = document.createElement('div'); n.className = 'noimg'; n.textContent = '写真なし'; el.querySelector('img').replaceWith(n); }
     el.querySelector('b').textContent = e.kind + ' ' + jpTime(e.time);
     el.querySelector('span').textContent = fmt(e.what) || '食べたものを入力してください';
     if (!e.what) el.querySelector('span').style.color = 'var(--acc)';
@@ -330,7 +341,7 @@ function render() {
   days.forEach(k => {
     const b = document.createElement('button'); b.className = 'hrow' + (k === d ? ' on' : '');
     const th = document.createElement('div'); th.className = 'th';
-    entriesOf(k).slice(0, 3).forEach(e => { const i = document.createElement('img'); i.alt = ''; i.src = e.img; th.appendChild(i); });
+    entriesOf(k).filter(e => e.img).slice(0, 3).forEach(e => { const i = document.createElement('img'); i.alt = ''; i.src = e.img; th.appendChild(i); });
     const t = document.createElement('b'); t.textContent = jpDate(k);
     const n = document.createElement('span'); n.textContent = data[k].length + '食';
     b.append(th, t, n);
@@ -367,22 +378,52 @@ $('prevM').onclick = () => { cal.m--; if (cal.m < 0) { cal.m = 11; cal.y--; } re
 $('nextM').onclick = () => { cal.m++; if (cal.m > 11) { cal.m = 0; cal.y++; } renderCal(); };
 $('date').onchange = () => { $('out').hidden = true; resetForm(); render(); };
 
+const EXIFTEST = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4QAiRXhpZgAATU0AKgAAAAgAAQESAAMAAAABAAYAAAAAAAD/2wBDAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMDAsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYUGBIUFRT/2wBDAQMEBAUEBQkFBQkUDQsNFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBT/wAARCAABAAIDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD50ooor8MP9Uz/2Q==';
+let exifApplied = null;
+function browserAppliesExif() {
+  if (!exifApplied) exifApplied = new Promise(res => { const t = new Image(); t.onload = () => res(t.naturalWidth === 1); t.onerror = () => res(true); t.src = EXIFTEST; });
+  return exifApplied;
+}
+async function exifOrientation(file) {
+  try {
+    const v = new DataView(await file.slice(0, 131072).arrayBuffer());
+    if (v.getUint16(0) !== 0xFFD8) return 1;
+    let p = 2;
+    while (p + 4 < v.byteLength) {
+      const m = v.getUint16(p), len = v.getUint16(p + 2);
+      if (m === 0xFFE1 && v.getUint32(p + 4) === 0x45786966) {
+        const t = p + 10, le = v.getUint16(t) === 0x4949, ifd = t + v.getUint32(t + 4, le), n = v.getUint16(ifd, le);
+        for (let i = 0; i < n; i++) { const e = ifd + 2 + i * 12; if (v.getUint16(e, le) === 0x0112) return v.getUint16(e + 8, le); }
+        return 1;
+      }
+      if ((m & 0xFF00) !== 0xFF00) return 1;
+      p += 2 + len;
+    }
+  } catch (e) {}
+  return 1;
+}
 function shrink(file) {
   return new Promise((res, rej) => {
-    const url = URL.createObjectURL(file), im = new Image();
-    im.onload = () => {
-      const w = 640, h = Math.round(im.height * w / im.width);
-      const c = document.createElement('canvas'); c.width = w; c.height = h;
-      c.getContext('2d').drawImage(im, 0, 0, w, h);
-      URL.revokeObjectURL(url); res(c.toDataURL('image/jpeg', 0.72));
-    };
-    im.onerror = rej; im.src = url;
+    Promise.all([exifOrientation(file), browserAppliesExif()]).then(([o0, applied]) => {
+      const o = applied ? 1 : o0, url = URL.createObjectURL(file), im = new Image();
+      im.onload = () => {
+        const iw = im.naturalWidth || im.width, ih = im.naturalHeight || im.height;
+        const k = 640 / (o > 4 ? ih : iw), w = Math.round(iw * k), h = Math.round(ih * k);
+        const c = document.createElement('canvas'), g = c.getContext('2d');
+        c.width = o > 4 ? h : w; c.height = o > 4 ? w : h;
+        const T = { 2: [-1, 0, 0, 1, w, 0], 3: [-1, 0, 0, -1, w, h], 4: [1, 0, 0, -1, 0, h], 5: [0, 1, 1, 0, 0, 0], 6: [0, 1, -1, 0, h, 0], 7: [0, -1, -1, 0, h, w], 8: [0, -1, 1, 0, 0, w] }[o];
+        if (T) g.transform(...T);
+        g.drawImage(im, 0, 0, w, h);
+        URL.revokeObjectURL(url); res(c.toDataURL('image/jpeg', 0.72));
+      };
+      im.onerror = rej; im.src = url;
+    }, rej);
   });
 }
 $('photo').onchange = async ev => {
   const f = ev.target.files[0]; if (!f) return;
   if (!editId) setNow();
-  try { photo = await shrink(f); $('rot').hidden = false; $('prev').src = photo; $('prev').style.display = 'block'; $('pickLabel').textContent = '写真を変更する'; }
+  try { photo = await shrink(f); syncPhotoUI(); }
   catch (e) { $('msg').textContent = '写真を読み込めませんでした。'; }
 };
 function rotate(src) {
@@ -390,7 +431,7 @@ function rotate(src) {
     const im = new Image();
     im.onload = () => {
       const c = document.createElement('canvas'); c.width = im.height; c.height = im.width;
-      const g = c.getContext('2d'); g.translate(c.width, 0); g.rotate(Math.PI / 2); g.drawImage(im, 0, 0);
+      const g = c.getContext('2d'); g.translate(0, c.height); g.rotate(-Math.PI / 2); g.drawImage(im, 0, 0);
       res(c.toDataURL('image/jpeg', 0.72));
     };
     im.onerror = rej; im.src = src;
@@ -437,10 +478,10 @@ async function commit(needText) {
   try { await commitInner(needText); } finally { busy = false; }
 }
 async function commitInner(needText) {
-  if (!photo) { $('msg').textContent = '先に写真を選んでください。'; return; }
+  if (!photo && !$('what').value.trim()) { $('msg').textContent = '写真か、食べたもののどちらかを入れてください。'; return; }
   if (needText && !$('what').value.trim()) { $('msg').textContent = '食べたものを入れてください。あとで入れるなら「写真だけ先に保存」を押してください。'; return; }
   const d = $('date').value;
-  const rec = { id: editId || Date.now(), kind, time: $('time').value, what: $('what').value.trim(), img: photo };
+  const rec = { id: editId || Date.now(), kind, time: $('time').value, what: $('what').value.trim(), img: photo || '' };
   const before = JSON.stringify(data[d] || []);
   const prevWhat = editId ? ((data[d] || []).find(x => x.id === editId) || {}).what : '';
   if (editId) data[d] = (data[d] || []).map(x => x.id === editId ? rec : x); else (data[d] = data[d] || []).push(rec);
@@ -475,9 +516,9 @@ $('make').onclick = async () => {
   if (!list.length) { $('msg').textContent = 'この日の記録がありません。'; return; }
   $('msg').textContent = list.some(e => !e.what) ? '食べたものが未入力の食事があります。画像は作りましたが、先に入力すると見やすくなります。' : '';
   const FF = '"Zen Maru Gothic","Hiragino Maru Gothic ProN","Hiragino Sans",sans-serif';
-  try { await document.fonts.load('700 40px "Zen Maru Gothic"', jpDate(d) + list.map(e => e.kind + e.what + jpTime(e.time)).join('') + '食事の記録さんの0123456789・' + name); } catch (e) {}
+  try { await document.fonts.load('700 40px "Zen Maru Gothic"', jpDate(d) + list.map(e => e.kind + e.what + jpTime(e.time)).join('') + '食事の記録さんの0123456789・写真なし' + name); } catch (e) {}
   const W = 1080, P = 40, GAP = 24, HEAD = 210, BAR = 64, CW = W - 2 * P, PAD = 20, FW = 420, FH = 315, TX = PAD + FW + 36, TW = CW - TX - 24, LH = 46;
-  const ims = await Promise.all(list.map(e => loadImg(e.img)));
+  const ims = await Promise.all(list.map(e => e.img ? loadImg(e.img) : null));
   const mg = document.createElement('canvas').getContext('2d'); mg.font = '700 34px ' + FF;
   const lines = list.map(e => e.what ? wrap(mg, e.what, TW) : []);
   const rowH = list.map((e, i) => BAR + 10 + PAD + Math.max(FH, lines[i].length * LH) + PAD);
@@ -507,8 +548,13 @@ $('make').onclick = async () => {
     const ch = h - BAR - 10 - 2 * PAD, fx = x + PAD, fy = y + BAR + 10 + PAD + Math.round((ch - FH) / 2);
     g.save(); rr(g, fx, fy, FW, FH, 18); g.clip();
     g.fillStyle = 'hsl(' + hue + ' 70% 95%)'; g.fillRect(fx, fy, FW, FH);
-    const s = Math.max(FW / im.width, FH / im.height), dw = im.width * s, dh = im.height * s;
-    g.drawImage(im, fx + (FW - dw) / 2, fy + (FH - dh) / 2, dw, dh); g.restore();
+    if (im) {
+      const s = Math.max(FW / im.width, FH / im.height), dw = im.width * s, dh = im.height * s;
+      g.drawImage(im, fx + (FW - dw) / 2, fy + (FH - dh) / 2, dw, dh); g.restore();
+    } else {
+      g.restore(); g.textAlign = 'center'; g.fillStyle = 'hsl(' + hue + ' 40% 70%)'; g.font = '700 34px ' + FF; g.fillText('写真なし', fx + FW / 2, fy + FH / 2, FW - 20);
+      g.setLineDash([14, 10]); g.lineWidth = 4; g.strokeStyle = 'hsl(' + hue + ' 55% 82%)'; rr(g, fx + 2, fy + 2, FW - 4, FH - 4, 16); g.stroke(); g.setLineDash([]);
+    }
     g.fillStyle = 'hsl(' + hue + ' 20% 36%)'; g.font = '700 34px ' + FF; g.textAlign = 'left';
     const ty = y + BAR + 10 + PAD + Math.round((ch - lines[i].length * LH) / 2); lines[i].forEach((t, k) => g.fillText(t, x + TX, ty + k * LH + LH / 2, TW));
   }
