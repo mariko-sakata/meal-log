@@ -44,6 +44,7 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
 #chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .chip{border:2px solid var(--line);background:var(--bg);border-radius:999px;padding:5px 13px;font-size:14px}
 #fmtPrev{margin:6px 0 0;color:var(--acc);font-size:13px;font-weight:700;min-height:1.2em}
+#bkStatus{white-space:pre-line}
 .item{display:flex;gap:12px;align-items:center;padding:10px 0;border-top:2px solid var(--line)}
 .item:first-child{border-top:0}
 .item img{width:72px;height:72px;object-fit:cover;border-radius:16px;flex:none}
@@ -137,6 +138,16 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
   <p class="note" id="streak"></p>
   <h2 style="margin-top:18px">最近の記録（3日分）</h2>
   <div id="hist"></div>
+</section>
+
+<section class="card" id="backupCard">
+  <h2>バックアップ</h2>
+  <p class="note">記録をファイルに書き出しておくと、スマホを替えたり、データが消えたりしても、読み込んで戻せます。</p>
+  <p class="note" id="bkStatus"></p>
+  <button class="btn" id="bkOut">記録を書き出す</button>
+  <button class="btn sub" id="bkIn">記録を読み込む</button>
+  <input type="file" id="bkFile" accept=".json,application/json" hidden>
+  <p class="note" id="bkMsg"></p>
 </section>
 </main>
 
@@ -323,7 +334,7 @@ function entriesOf(d) { return (data[d] || []).slice().sort((a, b) => a.time.loc
 function render() {
   const d = $('date').value, list = entriesOf(d);
   $('list').innerHTML = list.length ? '' : '<p class="note">この日はまだ記録がありません。</p>';
-  $('dayTools').hidden = !list.length; $('dayTools').open = false; $('moveTo').value = d; armDay(false);
+  $('dayTools').hidden = !list.length; $('dayTools').open = false; $('moveTo').value = d; armDay(false); bkStatus();
   list.forEach(e => {
     const el = document.createElement('div'); el.className = 'item';
     el.innerHTML = '<img alt=""><div><b></b><span></span></div><div class="acts"><button class="ed">修正</button></div>';
@@ -564,28 +575,87 @@ $('make').onclick = async () => {
   await new Promise(r => c.toBlob(b => { blobOut = b; r(); }, 'image/jpeg', 0.85));
   $('out').hidden = false; $('out').scrollIntoView();
 };
+async function saveBlob(blob, filename) {
+  const file = new File([blob], filename, { type: blob.type });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file] }); return 'shared'; }
+    catch (e) { if (e && e.name === 'AbortError') return 'cancel'; }
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  return 'saved';
+}
 $('saveImg').onclick = async () => {
   const fallback = '保存できませんでした。画像を長押しして「写真に保存」してください。';
   if (!blobOut) { $('msg2').textContent = '画像の準備中です。もう一度押してください。'; return; }
-  const filename = 'meal-' + $('date').value + '.jpg';
   try {
-    const file = new File([blobOut], filename, { type: 'image/jpeg' });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file] });
-        $('msg2').textContent = '共有メニューから保存・送信できます。';
-        return;
-      } catch (e) {
-        if (e && e.name === 'AbortError') return;
-      }
-    }
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blobOut); a.download = filename;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-    $('msg2').textContent = '保存しました。チャットワークで送ってください。';
+    const r = await saveBlob(blobOut, 'meal-' + $('date').value + '.jpg');
+    if (r === 'shared') $('msg2').textContent = '共有メニューから保存・送信できます。';
+    else if (r === 'saved') $('msg2').textContent = '保存しました。チャットワークで送ってください。';
   } catch (e) { $('msg2').textContent = fallback; }
 };
+const KINDS = ['朝', '昼', '間食', '夜'];
+const bkLast = () => { try { return Number(localStorage.getItem('mealLog.lastBackup')) || 0; } catch (e) { return 0; } };
+async function bkStatus() {
+  const days = Object.keys(data).filter(k => (data[k] || []).length), meals = days.reduce((a, k) => a + data[k].length, 0);
+  let t = '保存している記録: ' + days.length + '日分・' + meals + '食';
+  try { if (navigator.storage && navigator.storage.estimate) { const s = await navigator.storage.estimate(), mb = s.usage / 1048576; if (s.usage != null) t += '（端末の使用量 約' + (mb < 10 ? mb.toFixed(1) : Math.round(mb)) + 'MB）'; } } catch (e) {}
+  const last = bkLast(), dd = Math.floor((Date.now() - last) / 86400000), old = !last || dd > 14;
+  const ago = last ? '最後の書き出し: ' + (dd <= 0 ? '今日' : dd + '日前') : (meals ? 'まだ書き出していません。' : '');
+  $('bkStatus').textContent = t + (ago ? '\n' + ago : '');
+  $('bkStatus').style.color = meals && old ? 'var(--acc)' : '';
+}
+$('bkOut').onclick = async () => {
+  if (!ready) return;
+  const days = Object.keys(data).filter(k => (data[k] || []).length).sort();
+  if (!days.length) { $('bkMsg').textContent = '書き出す記録がありません。'; return; }
+  try {
+    const parts = ['{"app":"meal-log","version":1,"exportedAt":' + JSON.stringify(new Date().toISOString()) + ',"name":' + JSON.stringify(name) + ',"hue":' + JSON.stringify(hue) + ',"freq":' + JSON.stringify(freq) + ',"days":{'];
+    days.forEach((k, i) => parts.push((i ? ',' : '') + JSON.stringify(k) + ':' + JSON.stringify(data[k])));
+    parts.push('}}');
+    const blob = new Blob(parts, { type: 'application/json' }), n = new Date();
+    const r = await saveBlob(blob, 'meal-log-backup-' + n.getFullYear() + pad(n.getMonth() + 1) + pad(n.getDate()) + '.json');
+    if (r === 'cancel') return;
+    try { localStorage.setItem('mealLog.lastBackup', String(Date.now())); } catch (e) {}
+    $('bkMsg').textContent = (r === 'shared' ? '共有メニューから「ファイルに保存」などを選んで、大切な場所に保存してください。' : '書き出しました。ファイルを、なくさない場所に保管してください。') + '（' + days.length + '日分・' + (blob.size / 1048576).toFixed(1) + 'MB）';
+    bkStatus();
+  } catch (e) { $('bkMsg').textContent = '書き出せませんでした。'; }
+};
+$('bkIn').onclick = () => $('bkFile').click();
+
+$('bkFile').onchange = async ev => {
+  const f = ev.target.files[0]; ev.target.value = ''; if (!f) return;
+  if (!ready) { $('bkMsg').textContent = '読み込み中です。少し待ってからもう一度お試しください。'; return; }
+  let obj;
+  try { obj = JSON.parse(await f.text()); } catch (e) { $('bkMsg').textContent = 'ファイルを読めませんでした。書き出したバックアップファイルを選んでください。'; return; }
+  if (!obj || obj.app !== 'meal-log' || !obj.days || typeof obj.days !== 'object') { $('bkMsg').textContent = '食事ログのバックアップファイルではないようです。'; return; }
+  const changed = [], before = {}; let added = 0, skipped = 0, bad = 0;
+  Object.keys(obj.days).forEach(k => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(k) || !Array.isArray(obj.days[k])) { bad++; return; }
+    const cur = data[k] || [], ids = new Set(cur.map(x => x.id)), add = [];
+    obj.days[k].forEach(e => {
+      const img = e && e.img == null ? '' : e && e.img;
+      if (!e || typeof e !== 'object' || typeof e.id !== 'number' || !KINDS.includes(e.kind) || typeof e.what !== 'string' || typeof img !== 'string' || (img && !img.startsWith('data:image/'))) { bad++; return; }
+      if (ids.has(e.id)) { skipped++; return; }
+      ids.add(e.id); add.push({ id: e.id, kind: e.kind, time: typeof e.time === 'string' ? e.time : '', what: e.what, img });
+    });
+    if (add.length) { if (!(k in before)) before[k] = data[k] ? JSON.stringify(data[k]) : null; data[k] = cur.concat(add); changed.push(k); added += add.length; }
+  });
+  if (!changed.length) { $('bkMsg').textContent = '新しく追加できる記録はありませんでした' + (skipped ? '（すでにある食事 ' + skipped + ' 件）' : '') + '。'; return; }
+  if (!(await save(changed))) {
+    changed.forEach(k => { if (before[k] === null) delete data[k]; else data[k] = JSON.parse(before[k]); });
+    $('bkMsg').textContent = '保存できませんでした。スマホの空き容量を確認してください。'; return;
+  }
+  if (obj.freq && typeof obj.freq === 'object') Object.keys(obj.freq).forEach(it => {
+    const x = obj.freq[it]; if (it === '__proto__' || it === 'constructor' || !x || typeof x.n !== 'number') return;
+    const c = freq[it] || { n: 0, t: 0 }; freq[it] = { n: Math.max(c.n, x.n), t: Math.max(c.t, Number(x.t) || 0) };
+  });
+  saveFreq(); render(); updatePreview();
+  $('bkMsg').textContent = '読み込みました。' + added + '食を追加しました' + (skipped ? '（すでにあった ' + skipped + ' 食は、そのままにしました）' : '') + (bad ? '（読めなかった ' + bad + ' 件は、飛ばしました）' : '') + '。';
+};
+
 init();
 if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 </script>
