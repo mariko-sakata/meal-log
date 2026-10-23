@@ -328,6 +328,7 @@ function startEdit(e) {
 }
 
 function jpTime(t) { const [h, m] = t.split(':').map(Number); return m === 0 ? h + '時' : m === 30 ? h + '時半' : h + '時' + m + '分'; }
+function dotDate(d) { const [y, m, dd] = d.split('-').map(Number); return y + '.' + String(m).padStart(2, '0') + '.' + String(dd).padStart(2, '0') + '(' + WD[new Date(y, m - 1, dd).getDay()] + ')'; }
 function jpDate(d) { const [y, m, dd] = d.split('-').map(Number); return m + '月' + dd + '日（' + WD[new Date(y, m - 1, dd).getDay()] + '）'; }
 function entriesOf(d) { return (data[d] || []).slice().sort((a, b) => a.time.localeCompare(b.time)); }
 
@@ -527,47 +528,42 @@ $('make').onclick = async () => {
   if (!list.length) { $('msg').textContent = 'この日の記録がありません。'; return; }
   $('msg').textContent = list.some(e => !e.what) ? '食べたものが未入力の食事があります。画像は作りましたが、先に入力すると見やすくなります。' : '';
   const FF = '"Zen Maru Gothic","Hiragino Maru Gothic ProN","Hiragino Sans",sans-serif';
-  try { await document.fonts.load('700 40px "Zen Maru Gothic"', jpDate(d) + list.map(e => e.kind + e.what + jpTime(e.time)).join('') + '食事の記録さんの0123456789・写真なし' + name); } catch (e) {}
-  const W = 1080, P = 40, GAP = 24, HEAD = 210, BAR = 64, CW = W - 2 * P, PAD = 20, FW = 420, FH = 315, TX = PAD + FW + 36, TW = CW - TX - 24, LH = 46;
+  try { await document.fonts.load('700 40px "Zen Maru Gothic"', dotDate(d) + list.map(e => e.kind + e.what + e.time).join('') + '0123456789.():・写真なし日月火水木金土' + name); } catch (e) {}
+  const W = 1080, P = 44, LX = P + 98, DX = P + 128, PX = P + 166, FW = 340, FH = 255, TX = PX + FW + 30, TW = W - P - TX, LH = 44, PADY = 30, TOP = 118;
   const ims = await Promise.all(list.map(e => e.img ? loadImg(e.img) : null));
   const mg = document.createElement('canvas').getContext('2d'); mg.font = '700 34px ' + FF;
   const lines = list.map(e => e.what ? wrap(mg, e.what, TW) : []);
-  const rowH = list.map((e, i) => BAR + 10 + PAD + Math.max(FH, lines[i].length * LH) + PAD);
-  
-  
-  const H = HEAD + rowH.reduce((a, b) => a + b, 0) + GAP * (list.length - 1) + P;
+  const rowH = list.map((e, i) => PADY * 2 + Math.max(FH, lines[i].length * LH));
+  const H = TOP + rowH.reduce((a, b) => a + b, 0) + P;
   const c = document.createElement('canvas'); c.width = W; c.height = H;
   const g = c.getContext('2d');
-  g.fillStyle = 'hsl(' + hue + ' 100% 98%)'; g.fillRect(0, 0, W, H);
-  const cols = ['#f4c7d3', '#cfe8de', '#f6dfa0', '#d9cdee', '#c9def0'];
-  g.globalAlpha = 0.85;
-  for (let i = 0; i < 18; i++) hex(g, 60 + i * (W - 120) / 17, 38 + (i % 3) * 22 + Math.sin(i * 1.7) * 12, 12 + (i % 4) * 4, cols[i % 5], i);
-  g.globalAlpha = 1;
-  g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.fillStyle = 'hsl(' + hue + ' 68% 70%)'; g.font = '700 74px ' + FF; g.fillText(jpDate(d), W / 2, 124, W - 2 * P);
-  g.fillStyle = 'hsl(' + hue + ' 70% 80%)'; g.font = '700 30px ' + FF; g.fillText((name ? name + 'さんの' : '') + '食事の記録', W / 2, 184, W - 2 * P);
-  let ry = HEAD;
-  const rowY = rowH.map(h => { const y = ry; ry += h + GAP; return y; });
+  const acc = 'hsl(' + hue + ' 68% 68%)', ink = 'hsl(' + hue + ' 20% 36%)', soft = 'hsl(' + hue + ' 50% 88%)';
+  g.fillStyle = '#ffffff'; g.fillRect(0, 0, W, H);
+  g.textBaseline = 'alphabetic';
+  g.textAlign = 'left'; g.fillStyle = acc; g.font = '700 36px ' + FF; g.fillText(dotDate(d), P, 80, 640);
+  if (name) { g.textAlign = 'right'; g.fillStyle = ink; g.font = '700 36px ' + FF; g.fillText(name, W - P, 80, 340); }
+  g.fillStyle = acc; g.fillRect(P, 98, W - 2 * P, 4);
+  g.textBaseline = 'middle';
+  let ry = TOP; const rowY = rowH.map(h => { const y = ry; ry += h; return y; });
+  const fyOf = i => rowY[i] + PADY + Math.round((rowH[i] - 2 * PADY - FH) / 2), dotY = list.map((e, i) => fyOf(i) + 22);
+  g.strokeStyle = soft; g.lineWidth = 4; g.beginPath(); g.moveTo(DX, dotY[0]); g.lineTo(DX, dotY[dotY.length - 1]); g.stroke();
   for (let i = 0; i < list.length; i++) {
-    const e = list[i], im = ims[i], h = rowH[i], y = rowY[i], x = P;
-    
-    
-    rr(g, x, y + BAR + 10, CW, h - BAR - 10, 28); g.fillStyle = '#fff'; g.fill(); g.lineWidth = 4; g.strokeStyle = 'hsl(' + hue + ' 60% 88%)'; g.stroke();
-    rr(g, x, y, CW, BAR, BAR / 2); g.fillStyle = 'hsl(' + hue + ' 65% 72%)'; g.fill();
-    g.textAlign = 'left'; g.fillStyle = '#fff'; g.font = '700 34px ' + FF;
-    g.fillText(e.kind + '　' + jpTime(e.time), x + 28, y + BAR / 2 + 2, CW - 56);
-    const ch = h - BAR - 10 - 2 * PAD, fx = x + PAD, fy = y + BAR + 10 + PAD + Math.round((ch - FH) / 2);
-    g.save(); rr(g, fx, fy, FW, FH, 18); g.clip();
-    g.fillStyle = 'hsl(' + hue + ' 70% 95%)'; g.fillRect(fx, fy, FW, FH);
+    const e = list[i], im = ims[i], h = rowH[i], y = rowY[i], fy = fyOf(i);
+    g.textAlign = 'right'; g.fillStyle = ink; g.font = '700 34px ' + FF; g.fillText(e.kind, LX, dotY[i], 100);
+    g.fillStyle = 'hsl(' + hue + ' 12% 52%)'; g.font = '700 28px ' + FF; g.fillText(e.time.replace(/^0/, ''), LX, dotY[i] + 38, 100);
+    g.fillStyle = acc; g.beginPath(); g.arc(DX, dotY[i], 11, 0, Math.PI * 2); g.fill();
     if (im) {
+      g.save(); rr(g, PX, fy, FW, FH, 14); g.clip();
       const s = Math.max(FW / im.width, FH / im.height), dw = im.width * s, dh = im.height * s;
-      g.drawImage(im, fx + (FW - dw) / 2, fy + (FH - dh) / 2, dw, dh); g.restore();
+      g.drawImage(im, PX + (FW - dw) / 2, fy + (FH - dh) / 2, dw, dh); g.restore();
     } else {
-      g.restore(); g.textAlign = 'center'; g.fillStyle = 'hsl(' + hue + ' 40% 70%)'; g.font = '700 34px ' + FF; g.fillText('写真なし', fx + FW / 2, fy + FH / 2, FW - 20);
-      g.setLineDash([14, 10]); g.lineWidth = 4; g.strokeStyle = 'hsl(' + hue + ' 55% 82%)'; rr(g, fx + 2, fy + 2, FW - 4, FH - 4, 16); g.stroke(); g.setLineDash([]);
+      g.fillStyle = 'hsl(' + hue + ' 70% 97%)'; rr(g, PX, fy, FW, FH, 14); g.fill();
+      g.textAlign = 'center'; g.fillStyle = 'hsl(' + hue + ' 40% 70%)'; g.font = '700 32px ' + FF; g.fillText('写真なし', PX + FW / 2, fy + FH / 2, FW - 20);
+      g.setLineDash([14, 10]); g.lineWidth = 4; g.strokeStyle = 'hsl(' + hue + ' 55% 82%)'; rr(g, PX + 2, fy + 2, FW - 4, FH - 4, 14); g.stroke(); g.setLineDash([]);
     }
-    g.fillStyle = 'hsl(' + hue + ' 20% 36%)'; g.font = '700 34px ' + FF; g.textAlign = 'left';
-    const ty = y + BAR + 10 + PAD + Math.round((ch - lines[i].length * LH) / 2); lines[i].forEach((t, k) => g.fillText(t, x + TX, ty + k * LH + LH / 2, TW));
+    g.fillStyle = ink; g.font = '700 34px ' + FF; g.textAlign = 'left';
+    const ty = y + PADY + Math.round((h - 2 * PADY - lines[i].length * LH) / 2); lines[i].forEach((t, k) => g.fillText(t, TX, ty + k * LH + LH / 2, TW));
+    if (i < list.length - 1) { g.strokeStyle = '#e8dde2'; g.lineWidth = 2; g.beginPath(); g.moveTo(P, y + h); g.lineTo(W - P, y + h); g.stroke(); }
   }
   $('outImg').innerHTML = '';
   const img = new Image(); img.alt = '1日のまとめ画像'; img.src = c.toDataURL('image/jpeg', 0.85);
